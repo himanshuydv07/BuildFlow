@@ -1,7 +1,5 @@
 import { NavLink, useParams } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Bell, Plus, Activity, StickyNote } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { projectsApi } from '../../lib/resources';
 import { Logo } from '../ui/Logo';
 import { LayoutDashboard, CheckSquare, Bell, Plus, Activity, StickyNote, Mail } from 'lucide-react';
 import { projectsApi, invitationsApi } from '../../lib/resources';
