@@ -17,8 +17,6 @@ const createInvitation = asyncHandler(async (req, res) => {
   const { email, role } = req.body;
   const normalizedEmail = email.toLowerCase();
 
-  // An ADMIN cannot invite someone in as an ADMIN unless the OWNER allows
-  // it — keep invitation power in line with member-management power.
   if (role === 'ADMIN' && req.membership.role !== 'OWNER') {
     throw ApiError.forbidden('Only the project owner can invite a new admin');
   }
@@ -98,7 +96,7 @@ const listMyInvitations = asyncHandler(async (req, res) => {
   return new ApiResponse(200, { invitations }).send(res);
 });
 
-// POST /invitations/:invitationId/accept  { token }
+// POST /invitations/:invitationId/accept  { token? }
 const acceptInvitation = asyncHandler(async (req, res) => {
   const invitation = await Invitation.findById(req.params.invitationId).select('+tokenHash');
   if (!invitation) throw ApiError.notFound('Invitation not found');
@@ -108,10 +106,12 @@ const acceptInvitation = asyncHandler(async (req, res) => {
     invitation.status = 'EXPIRED';
     await invitation.save();
     throw ApiError.badRequest('Invitation has expired');
-  }  // Token proves link possession for someone accepting via the emailed
+  }
+
+  // Token proves link possession for someone accepting via the emailed
   // link. When accepting from the in-app "My Invitations" list, the
   // user is already authenticated as the exact invited email — that's
-  // equivalent proof, so the token becomes optional there.
+  // equivalent proof, so the token is optional there.
   if (req.body.token) {
     if (invitation.tokenHash !== hashToken(req.body.token)) {
       throw ApiError.unauthorized('Invalid invitation token');
@@ -120,7 +120,6 @@ const acceptInvitation = asyncHandler(async (req, res) => {
   if (invitation.email !== req.user.email) {
     throw ApiError.forbidden('This invitation was sent to a different email address');
   }
-
 
   const existing = await ProjectMember.findOne({ projectId: invitation.projectId, userId: req.user._id });
   if (existing && existing.status === 'ACTIVE') {

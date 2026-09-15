@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Mail } from 'lucide-react';
 import { invitationsApi } from '../lib/resources';
@@ -11,8 +11,6 @@ import Button from '../components/ui/Button';
 export default function InvitationsPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [params] = useSearchParams();
-  const inlineToken = params.get('token');
   const [busyId, setBusyId] = useState(null);
 
   const { data, isLoading } = useQuery({
@@ -21,27 +19,27 @@ export default function InvitationsPage() {
   });
 
   const accept = async (inv) => {
-  setBusyId(inv._id);
-  try {
-    const { data: res } = await invitationsApi.accept(inv._id);
-    toast.success(`Joined ${inv.projectId.name}`);
-    qc.invalidateQueries({ queryKey: ['invitations-mine'] });
-    qc.invalidateQueries({ queryKey: ['invitations-mine-count'] });
-    qc.invalidateQueries({ queryKey: ['projects'] });
-    navigate(`/projects/${res.data.projectId}`);
-  } catch (err) {
-    toast.error(err.response?.data?.message || 'Could not accept invitation');
-  } finally {
-    setBusyId(null);
-  }
-};
+    setBusyId(inv._id);
+    try {
+      const { data: res } = await invitationsApi.accept(inv._id);
+      toast.success(`Joined ${inv.projectId.name}`);
+      qc.invalidateQueries({ queryKey: ['invitations-mine'] });
+      qc.invalidateQueries({ queryKey: ['invitations-mine-count'] });
+      qc.invalidateQueries({ queryKey: ['projects'] });
+      navigate(`/projects/${res.data.projectId}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not accept invitation');
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const reject = async (inv) => {
     setBusyId(inv._id);
     try {
       await invitationsApi.reject(inv._id);
-      qc.invalidateQueries({ queryKey: ['invitations-mine-count'] });
       qc.invalidateQueries({ queryKey: ['invitations-mine'] });
+      qc.invalidateQueries({ queryKey: ['invitations-mine-count'] });
     } finally {
       setBusyId(null);
     }
