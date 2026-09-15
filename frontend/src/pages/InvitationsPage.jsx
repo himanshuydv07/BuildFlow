@@ -21,26 +21,26 @@ export default function InvitationsPage() {
   });
 
   const accept = async (inv) => {
-    setBusyId(inv._id);
-    try {
-      const token = inv._id === params.get('id') ? inlineToken : window.prompt('Paste the invitation token from your email/link:');
-      if (!token) return;
-      const { data: res } = await invitationsApi.accept(inv._id, token);
-      toast.success(`Joined ${inv.projectId.name}`);
-      qc.invalidateQueries({ queryKey: ['invitations-mine'] });
-      qc.invalidateQueries({ queryKey: ['projects'] });
-      navigate(`/projects/${res.data.projectId}`);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not accept invitation');
-    } finally {
-      setBusyId(null);
-    }
-  };
+  setBusyId(inv._id);
+  try {
+    const { data: res } = await invitationsApi.accept(inv._id);
+    toast.success(`Joined ${inv.projectId.name}`);
+    qc.invalidateQueries({ queryKey: ['invitations-mine'] });
+    qc.invalidateQueries({ queryKey: ['invitations-mine-count'] });
+    qc.invalidateQueries({ queryKey: ['projects'] });
+    navigate(`/projects/${res.data.projectId}`);
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'Could not accept invitation');
+  } finally {
+    setBusyId(null);
+  }
+};
 
   const reject = async (inv) => {
     setBusyId(inv._id);
     try {
       await invitationsApi.reject(inv._id);
+      qc.invalidateQueries({ queryKey: ['invitations-mine-count'] });
       qc.invalidateQueries({ queryKey: ['invitations-mine'] });
     } finally {
       setBusyId(null);

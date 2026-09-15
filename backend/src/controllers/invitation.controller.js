@@ -108,13 +108,19 @@ const acceptInvitation = asyncHandler(async (req, res) => {
     invitation.status = 'EXPIRED';
     await invitation.save();
     throw ApiError.badRequest('Invitation has expired');
-  }
-  if (invitation.tokenHash !== hashToken(req.body.token)) {
-    throw ApiError.unauthorized('Invalid invitation token');
+  }  // Token proves link possession for someone accepting via the emailed
+  // link. When accepting from the in-app "My Invitations" list, the
+  // user is already authenticated as the exact invited email — that's
+  // equivalent proof, so the token becomes optional there.
+  if (req.body.token) {
+    if (invitation.tokenHash !== hashToken(req.body.token)) {
+      throw ApiError.unauthorized('Invalid invitation token');
+    }
   }
   if (invitation.email !== req.user.email) {
     throw ApiError.forbidden('This invitation was sent to a different email address');
   }
+
 
   const existing = await ProjectMember.findOne({ projectId: invitation.projectId, userId: req.user._id });
   if (existing && existing.status === 'ACTIVE') {
