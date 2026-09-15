@@ -1,0 +1,90 @@
+name: CI
+
+# Runs on every push and pull request targeting main. This is the
+# first place this codebase's `npm install` and test suite actually
+# get executed with real network access — the sandbox this project
+# was built in had none, so treat a green run here as the first real
+# confirmation, not a formality.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-test:
+    name: Backend — install & test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+        # No dependency caching configured yet — this repo doesn't ship
+        # committed package-lock.json files (see docs/GITHUB_GUIDE.md:
+        # run `npm install` locally once and commit the generated
+        # lockfiles, then you can add `cache: 'npm'` back here for
+        # faster runs).
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run test suite
+        # mongodb-memory-server downloads its own mongod binary — no
+        # external database service needed. Redis is intentionally NOT
+        # provided here: the app is designed to degrade gracefully
+        # without it (see docs/ARCHITECTURE.md), so this also doubles
+        # as a real test of that fallback path.
+        run: npm test
+        env:
+          NODE_ENV: test
+          JWT_ACCESS_SECRET: ci-test-access-secret
+          JWT_REFRESH_SECRET: ci-test-refresh-secret
+          REDIS_URL: redis://localhost:6379
+
+      - name: Syntax-check every source file
+        run: find src -name "*.js" -print0 | xargs -0 -I{} node --check {}
+
+  frontend-build:
+    name: Frontend — install & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build production bundle
+        # Dummy values are fine here — the build only needs these vars
+        # to exist so Vite can bake them into the bundle; it doesn't
+        # need a live backend to compile.
+        run: npm run build
+        env:
+          VITE_API_URL: https://placeholder.example.com/api/v1
+          VITE_SOCKET_URL: https://placeholder.example.com
+
+  docker-build-check:
+    name: Docker images build cleanly
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-build]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t buildflow-backend:ci ./backend
+
+      - name: Build frontend image
+        run: docker build -t buildflow-frontend:ci ./frontend

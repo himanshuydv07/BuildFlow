@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  font-feature-settings: 'tnum' 1;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #C9CDC6 transparent;
+}
+
+:focus-visible {
+  outline: 2px solid #16A388;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

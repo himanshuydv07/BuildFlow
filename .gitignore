@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Environment secrets — NEVER commit real .env files
+.env
+.env.local
+.env.*.local
+.env.example
+
+# Build output
+dist/
+build/
+.vite/
+docs/
+# Logs
+*.log
+npm-debug.log*
+
+# Uploads (local dev file storage)
+backend/uploads/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Test coverage
+coverage/
