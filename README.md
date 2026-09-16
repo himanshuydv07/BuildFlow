@@ -142,22 +142,9 @@ npm install
 npm run dev
 ```
 
+
 Runs on `http://localhost:5173` and expects the backend at
 `http://localhost:5000/api/v1` (see `.env`).
-
-## Documentation
-
-- [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md) — start here: the whole project explained end to end
-- [`docs/LOCAL_SETUP.md`](docs/LOCAL_SETUP.md) — running locally with Docker Desktop, step by step
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system design, RBAC model, Redis responsibilities
-- [`docs/DATABASE_SCHEMA.md`](docs/DATABASE_SCHEMA.md) — collections and relationships
-- [`docs/API_DOCUMENTATION.md`](docs/API_DOCUMENTATION.md) — endpoint reference
-- [`docs/SECURITY.md`](docs/SECURITY.md) — auth, authorization, hardening notes, and a production security checklist
-- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — step-by-step guide to deploying free on Render + Vercel + MongoDB Atlas + Resend + Cloudflare R2
-- [`docs/GITHUB_GUIDE.md`](docs/GITHUB_GUIDE.md) — turning this folder into a git repo, CI, and auto-deploy
-- [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) — palette, typography, and UI conventions
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — branch/commit conventions and the pre-PR checklist
-- [`TESTING.md`](TESTING.md) — what's tested, what isn't, how to run it
 
 ## Project-scoped RBAC, in one example
 
