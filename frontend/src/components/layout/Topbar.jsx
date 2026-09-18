@@ -1,18 +1,26 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Bell, LogOut, ChevronDown } from 'lucide-react';
+import { Search, Bell, LogOut, ChevronDown, UserX } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { notificationsApi } from '../../lib/resources';
 import { Avatar } from '../ui/Display';
+import { Modal } from '../ui/Overlay';
+import { Input, FormField } from '../ui/Form';
+import Button from '../ui/Button';
 import NotificationPanel from '../notifications/NotificationPanel';
 
 export default function Topbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, deleteAccount } = useAuth();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [notifOpen, setNotifOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [password, setPassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleting, setDeleting] = useState(false);
   const menuRef = useRef(null);
 
   const { data } = useQuery({
@@ -32,6 +40,21 @@ export default function Topbar() {
   const submitSearch = (e) => {
     e.preventDefault();
     if (query.trim()) navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+  };
+
+  const confirmDelete = async (e) => {
+    e.preventDefault();
+    setDeleteError('');
+    setDeleting(true);
+    try {
+      await deleteAccount(password);
+      toast.success('Account deleted');
+      navigate('/login');
+    } catch (err) {
+      setDeleteError(err.response?.data?.message || 'Could not delete account');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -72,17 +95,66 @@ export default function Topbar() {
             <ChevronDown size={14} className="text-ink-faint" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 w-44 rounded-md border border-line bg-white py-1 shadow-pop">
+            <div className="absolute right-0 top-full mt-1 w-52 rounded-md border border-line bg-white py-1 shadow-pop">
               <button
                 onClick={logout}
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink-muted hover:bg-paper hover:text-ink"
               >
                 <LogOut size={14} /> Log out
               </button>
+              <div className="my-1 border-t border-line" />
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  setDeleteOpen(true);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-coral hover:bg-coral-faint"
+              >
+                <UserX size={14} /> Delete account
+              </button>
             </div>
           )}
         </div>
       </div>
+
+      <Modal
+        open={deleteOpen}
+        onClose={() => {
+          setDeleteOpen(false);
+          setPassword('');
+          setDeleteError('');
+        }}
+        title="Delete your account"
+      >
+        <p className="text-sm text-ink-muted">
+          This <strong>permanently</strong> deletes your account. You'll be removed from every project you're a
+          member of. This cannot be undone.
+        </p>
+        <p className="mt-2 text-sm text-ink-muted">
+          If you still own any active project, transfer ownership or archive it first — this action is blocked
+          until then.
+        </p>
+        <form onSubmit={confirmDelete} className="mt-4 space-y-3">
+          <FormField label="Confirm your password" error={deleteError}>
+            <Input
+              type="password"
+              required
+              autoFocus
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+            />
+          </FormField>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="secondary" onClick={() => setDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="danger" loading={deleting}>
+              Permanently delete account
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </header>
   );
 }

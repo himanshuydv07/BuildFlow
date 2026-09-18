@@ -31,6 +31,10 @@ const verifyEmailSchema = z.object({
   token: z.string().min(1),
 });
 
+const deleteAccountSchema = z.object({
+  password: z.string().min(1),
+});
+
 module.exports = {
   registerSchema,
   loginSchema,
@@ -38,4 +42,5 @@ module.exports = {
   forgotPasswordSchema,
   resetPasswordSchema,
   verifyEmailSchema,
+  deleteAccountSchema,
 };

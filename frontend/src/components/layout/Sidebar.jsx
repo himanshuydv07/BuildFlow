@@ -1,9 +1,8 @@
 import { NavLink, useParams } from 'react-router-dom';
+import { LayoutDashboard, CheckSquare, Bell, Plus, Activity, StickyNote, History, Mail } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { Logo } from '../ui/Logo';
-import { LayoutDashboard, CheckSquare, Bell, Plus, Activity, StickyNote, Mail } from 'lucide-react';
 import { projectsApi, invitationsApi } from '../../lib/resources';
-
+import { Logo } from '../ui/Logo';
 
 const navItemClass = ({ isActive }) =>
   `group flex items-center gap-2.5 rounded-md border-l-2 px-3 py-2 text-sm font-medium transition-colors ${
@@ -14,14 +13,14 @@ const navItemClass = ({ isActive }) =>
 
 export default function Sidebar({ onCreateProject }) {
   const { data } = useQuery({ queryKey: ['projects'], queryFn: () => projectsApi.list().then((r) => r.data.data) });
+  const { data: pendingInvites } = useQuery({
+    queryKey: ['invitations-mine-count'],
+    queryFn: () => invitationsApi.listMine().then((r) => r.data.data.invitations.length),
+    refetchInterval: 30000,
+  });
   const { projectId } = useParams();
   const owned = data?.owned || [];
   const shared = data?.shared || [];
-  const { data: pendingCount } = useQuery({
-  queryKey: ['invitations-mine-count'],
-  queryFn: () => invitationsApi.listMine().then((r) => r.data.data.invitations.length),
-  refetchInterval: 30000,
-});
 
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col bg-sidebar-gradient text-white">
@@ -36,18 +35,20 @@ export default function Sidebar({ onCreateProject }) {
         <NavLink to="/my-tasks" className={navItemClass}>
           <CheckSquare size={16} /> My Tasks
         </NavLink>
-        
         <NavLink to="/notifications" className={navItemClass}>
           <Bell size={16} /> Notifications
         </NavLink>
         <NavLink to="/invitations" className={navItemClass}>
-  <Mail size={16} /> Invitations
-  {pendingCount > 0 && (
-    <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-coral px-1 text-[10px] font-bold text-white">
-      {pendingCount}
-    </span>
-  )}
-</NavLink>
+          <Mail size={16} /> Invitations
+          {pendingInvites > 0 && (
+            <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-coral px-1 text-[10px] font-bold text-white">
+              {pendingInvites}
+            </span>
+          )}
+        </NavLink>
+        <NavLink to="/activity" className={navItemClass}>
+          <History size={16} /> Activity
+        </NavLink>
         <NavLink to="/notes" className={navItemClass}>
           <StickyNote size={16} /> Notes
         </NavLink>

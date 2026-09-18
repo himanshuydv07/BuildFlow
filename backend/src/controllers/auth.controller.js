@@ -3,6 +3,10 @@ const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const ApiResponse = require('../utils/ApiResponse');
 const User = require('../models/User');
+const ProjectMember = require('../models/ProjectMember');
+const Task = require('../models/Task');
+const Notification = require('../models/Notification');
+const Note = require('../models/Note');
 const {
   signAccessToken,
   signRefreshToken,
@@ -14,6 +18,7 @@ const { safeGet, safeSet, safeDel } = require('../config/redis');
 const env = require('../config/env');
 const logger = require('../config/logger');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/emailService');
+const { invalidateMembership } = require('../services/membershipService');
 
 const REFRESH_COOKIE_NAME = 'refreshToken';
 const refreshRedisKey = (jti) => `refresh:${jti}`;
@@ -21,13 +26,6 @@ const refreshRedisKey = (jti) => `refresh:${jti}`;
 function refreshCookieOptions() {
   return {
     httpOnly: true,
-    // Cross-site cookies (frontend on vercel.app, backend on
-    // onrender.com are different origins) REQUIRE sameSite:'none', and
-    // browsers require secure:true for any sameSite:'none' cookie.
-    // In local dev, frontend and backend are still different ports
-    // (different origins to the browser) but both plain HTTP, where
-    // sameSite:'none' without secure would be silently rejected by the
-    // browser — so dev uses 'lax' over plain HTTP instead.
     secure: env.isProduction,
     sameSite: env.isProduction ? 'none' : 'lax',
     path: '/api/v1/auth',
@@ -40,14 +38,8 @@ async function issueTokenPair(user) {
   const accessToken = signAccessToken(user);
   const refreshToken = signRefreshToken(user, jti);
 
-  // Store only a hash of the refresh token server-side, keyed by jti,
-  // so a leaked Redis dump doesn't itself hand out valid sessions.
   const stored = await safeSet(refreshRedisKey(jti), hashToken(refreshToken), 7 * 24 * 60 * 60);
   if (!stored) {
-    // Redis is required for refresh-session tracking; without it we
-    // cannot safely support rotation/revocation, so we degrade to
-    // access-token-only (short-lived) rather than pretending refresh
-    // works when it can't be revoked.
     logger.warn('[Auth] Redis unavailable — refresh token will not be revocable this session');
   }
 
@@ -68,9 +60,6 @@ const register = asyncHandler(async (req, res) => {
   user.emailVerificationExpires = new Date(Date.now() + env.emailVerificationExpiresHours * 60 * 60 * 1000);
   await user.save();
 
-  // Real transactional email if SMTP is configured; otherwise this
-  // logs the link to the console (see emailService.js) so local dev
-  // keeps working without any SMTP setup.
   const verifyUrl = `${env.clientUrl}/verify-email?token=${verificationToken}&uid=${user._id}`;
   await sendVerificationEmail(user, verifyUrl);
 
@@ -124,7 +113,6 @@ const refresh = asyncHandler(async (req, res) => {
     throw ApiError.unauthorized('Session no longer valid');
   }
 
-  // Rotate: invalidate the old refresh token, issue a brand new pair.
   await safeDel(refreshRedisKey(payload.jti));
   const { accessToken, refreshToken } = await issueTokenPair(user);
   res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions());
@@ -162,7 +150,7 @@ const changePassword = asyncHandler(async (req, res) => {
   }
 
   user.password = newPassword;
-  user.tokenVersion = (user.tokenVersion || 0) + 1; // invalidates all existing sessions
+  user.tokenVersion = (user.tokenVersion || 0) + 1;
   await user.save();
 
   res.clearCookie(REFRESH_COOKIE_NAME, { path: '/api/v1/auth', secure: env.isProduction, sameSite: env.isProduction ? 'none' : 'lax' });
@@ -174,8 +162,6 @@ const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email: email.toLowerCase() });
 
-  // Always respond identically whether or not the account exists, to
-  // avoid leaking which emails are registered.
   if (user) {
     const resetToken = generateOpaqueToken();
     user.passwordResetTokenHash = hashToken(resetToken);
@@ -236,6 +222,41 @@ const verifyEmail = asyncHandler(async (req, res) => {
   return new ApiResponse(200, null, 'Email verified successfully').send(res);
 });
 
+// DELETE /auth/me — permanent account deletion
+const deleteAccount = asyncHandler(async (req, res) => {
+  const { password } = req.body;
+  const user = await User.findById(req.user._id).select('+password');
+
+  if (!(await user.comparePassword(password))) {
+    throw ApiError.unauthorized('Password is incorrect');
+  }
+
+  const ownedActiveProjects = await ProjectMember.find({ userId: user._id, role: 'OWNER', status: 'ACTIVE' })
+    .populate('projectId', 'name isArchived');
+  const blocking = ownedActiveProjects.filter((m) => m.projectId && !m.projectId.isArchived);
+
+  if (blocking.length > 0) {
+    throw ApiError.badRequest(
+      `Transfer ownership or archive these projects before deleting your account: ${blocking
+        .map((m) => m.projectId.name)
+        .join(', ')}`
+    );
+  }
+
+  const memberships = await ProjectMember.find({ userId: user._id, status: 'ACTIVE' });
+  await ProjectMember.deleteMany({ userId: user._id });
+  await Promise.all(memberships.map((m) => invalidateMembership(user._id.toString(), m.projectId.toString())));
+
+  await Task.updateMany({ assignee: user._id }, { assignee: null });
+  await Notification.deleteMany({ user: user._id });
+  await Note.deleteMany({ author: user._id, projectId: null });
+
+  await user.deleteOne();
+
+  res.clearCookie(REFRESH_COOKIE_NAME, { path: '/api/v1/auth', secure: env.isProduction, sameSite: env.isProduction ? 'none' : 'lax' });
+  return new ApiResponse(200, null, 'Account permanently deleted').send(res);
+});
+
 module.exports = {
   register,
   login,
@@ -246,4 +267,5 @@ module.exports = {
   forgotPassword,
   resetPassword,
   verifyEmail,
+  deleteAccount,
 };

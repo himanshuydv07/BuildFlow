@@ -8,6 +8,7 @@ export const authApi = {
   changePassword: (body) => api.post('/auth/change-password', body),
   forgotPassword: (body) => api.post('/auth/forgot-password', body),
   resetPassword: (body) => api.post('/auth/reset-password', body),
+  deleteAccount: (password) => api.delete('/auth/me', { data: { password } }),
 };
 
 export const dashboardApi = {
@@ -83,6 +84,7 @@ export const notificationsApi = {
 
 export const activityApi = {
   list: (projectId, params) => api.get(`/projects/${projectId}/activity`, { params }),
+  listMine: (params) => api.get('/activity', { params }),
 };
 
 export const searchApi = {

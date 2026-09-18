@@ -26,5 +26,6 @@ router.post(
 );
 router.post('/reset-password', authLimiter, validate({ body: v.resetPasswordSchema }), controller.resetPassword);
 router.post('/verify-email', validate({ body: v.verifyEmailSchema }), controller.verifyEmail);
+router.delete('/me', requireAuth, authLimiter, validate({ body: v.deleteAccountSchema }), controller.deleteAccount);
 
 module.exports = router;

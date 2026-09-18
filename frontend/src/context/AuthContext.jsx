@@ -18,7 +18,6 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     setUnauthorizedHandler(clearSession);
-    // Attempt silent refresh on first load (relies on the httpOnly cookie).
     (async () => {
       try {
         const { data } = await api.post('/auth/refresh');
@@ -58,8 +57,16 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const deleteAccount = async (password) => {
+    // Let the caller catch and display the error (e.g. "you still own
+    // active projects") — only clear the session once deletion
+    // actually succeeded server-side.
+    await authApi.deleteAccount(password);
+    clearSession();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, setUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, deleteAccount, setUser }}>
       {children}
     </AuthContext.Provider>
   );

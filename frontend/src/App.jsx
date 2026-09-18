@@ -5,7 +5,6 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout from './components/layout/AppLayout';
 
-import InvitationLandingPage from './pages/InvitationLandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
@@ -14,8 +13,10 @@ import DashboardPage from './pages/DashboardPage';
 import MyTasksPage from './pages/MyTasksPage';
 import NotificationsPage from './pages/NotificationsPage';
 import InvitationsPage from './pages/InvitationsPage';
+import InvitationLandingPage from './pages/InvitationLandingPage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import NotesPage from './pages/NotesPage';
+import ActivityPage from './pages/ActivityPage';
 import ProjectLayout from './pages/project/ProjectLayout';
 import ProjectOverviewPage from './pages/project/ProjectOverviewPage';
 import ProjectTasksPage from './pages/project/ProjectTasksPage';
@@ -47,14 +48,17 @@ export default function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+            {/* Top-level (no sidebar shell) so an emailed invite link works
+                even for someone landing here mid-flow. */}
             <Route
-  path="/invitations/:invitationId"
-  element={
-    <ProtectedRoute>
-      <InvitationLandingPage />
-    </ProtectedRoute>
-  }
-/>
+              path="/invitations/:invitationId"
+              element={
+                <ProtectedRoute>
+                  <InvitationLandingPage />
+                </ProtectedRoute>
+              }
+            />
 
             <Route
               element={
@@ -69,6 +73,7 @@ export default function App() {
               <Route path="/invitations" element={<InvitationsPage />} />
               <Route path="/search" element={<SearchResultsPage />} />
               <Route path="/notes" element={<NotesPage />} />
+              <Route path="/activity" element={<ActivityPage />} />
 
               <Route path="/projects/:projectId" element={<ProjectLayout />}>
                 <Route index element={<ProjectOverviewPage />} />

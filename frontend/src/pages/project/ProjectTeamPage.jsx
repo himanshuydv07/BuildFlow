@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, X } from 'lucide-react';
+import { UserPlus, X, LogOut } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { membersApi, invitationsApi } from '../../lib/resources';
 import { Card, Avatar, RoleBadge } from '../../components/ui/Display';
@@ -13,11 +13,13 @@ import { useAuth } from '../../context/AuthContext';
 export default function ProjectTeamPage() {
   const { project, myRole } = useOutletContext();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const canManage = ['OWNER', 'ADMIN'].includes(myRole);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteForm, setInviteForm] = useState({ email: '', role: 'MEMBER' });
   const [removeTarget, setRemoveTarget] = useState(null);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
 
   const { data: members } = useQuery({
     queryKey: ['members', project._id],
@@ -64,15 +66,33 @@ export default function ProjectTeamPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['invitations', project._id] }),
   });
 
+  const leaveMutation = useMutation({
+    mutationFn: () => membersApi.leave(project._id),
+    onSuccess: () => {
+      toast.success(`You left "${project.name}"`);
+      qc.invalidateQueries({ queryKey: ['projects'] });
+      navigate('/dashboard');
+    },
+    onError: (e) => {
+      toast.error(e.response?.data?.message || 'Could not leave project');
+      setLeaveConfirmOpen(false);
+    },
+  });
+
   return (
     <div>
-      {canManage && (
-        <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex justify-end gap-2">
+        {myRole !== 'OWNER' && (
+          <Button variant="secondary" onClick={() => setLeaveConfirmOpen(true)}>
+            <LogOut size={15} /> Leave project
+          </Button>
+        )}
+        {canManage && (
           <Button onClick={() => setInviteOpen(true)}>
             <UserPlus size={15} /> Invite member
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       <Card className="divide-y divide-line">
         {(members || []).map((m) => {
@@ -106,7 +126,7 @@ export default function ProjectTeamPage() {
                   <RoleBadge role={m.role} />
                 )}
                 {canEditThis && (
-                  <button onClick={() => setRemoveTarget(m)} className="rounded p-1 text-ink-faint hover:bg-coral-faint hover:text-coral">
+                  <button onClick={() => setRemoveTarget(m)} className="rounded p-1 text-ink-faint hover:bg-coral-faint hover:text-coral" title="Remove member">
                     <X size={15} />
                   </button>
                 )}
@@ -170,6 +190,16 @@ export default function ProjectTeamPage() {
         title="Remove member"
         description={`Remove ${removeTarget?.userId.name} from ${project.name}? They will lose all access immediately.`}
         confirmLabel="Remove"
+        danger
+      />
+
+      <ConfirmDialog
+        open={leaveConfirmOpen}
+        onClose={() => setLeaveConfirmOpen(false)}
+        onConfirm={() => leaveMutation.mutate()}
+        title="Leave this project?"
+        description={`You'll lose access to "${project.name}" immediately. An Owner or Admin will need to re-invite you to rejoin.`}
+        confirmLabel="Leave project"
         danger
       />
     </div>
