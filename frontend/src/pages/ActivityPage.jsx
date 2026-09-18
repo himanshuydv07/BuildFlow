@@ -81,7 +81,6 @@ export default function ActivityPage() {
                 </Button>
                 <span className="text-xs text-ink-muted">
                   Page {page} of {totalPages}
-                  
                 </span>
                 <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
                   <ChevronRight size={14} />
